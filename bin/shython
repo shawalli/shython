@@ -1,3 +1,63 @@
-#!/bin/bash
+#!/usr/bin/env python
 
-python -i -m shython_preload
+import code
+import readline
+import atexit
+import os
+import sys
+
+class ShythonConsole(code.InteractiveConsole):
+    def __init__(self, locals=None):
+        self.orig_raw_input = self.raw_input
+        self.raw_input = self.hook_raw_input
+
+        self.clear_snippet_buffers()
+
+        code.InteractiveConsole.__init__(self, locals=locals)
+
+    def clear_snippet_buffers(self):
+        self.snippet_buffers = list()
+
+    def hook_raw_input(self, prompt):
+        input_received = self.orig_raw_input(prompt=prompt)
+
+        if input_received.startswith(':'):
+            input_received = input_received[1:]
+
+            input_delimited = input_received.split()
+
+            if input_delimited[0] == 'badd':
+                self.snippet_buffers.append('')
+                return ''
+            elif input_delimited[0] == 'bdel':
+                index = int(input_delimited[1])
+                if index > (len(self.snippet_buffers) - 1):
+                    print('Invalid buffer index')
+                    return ''
+
+                self.snippet_buffers.pop(index)
+                return ''
+            elif input_delimited[0] == 'bclear':
+            	self.reset_snippet_buffers()
+                return ''
+            elif input_delimited[0] == 'bed':
+                print('got bed')
+            elif input_delimited[0] == 'brun':
+                print('got brun')
+            elif input_delimited[0] == 'bn':
+                print('got bn')
+            elif input_delimited[0] == 'bp':
+                print('got bp')
+            elif input_delimited[0] == 'bl':
+                print(' '.join([str(i) for i in range(len(self.snippet_buffers))]))
+                return ''
+            else:
+                print('Invalid Shython command: %s' % input_received)
+
+            return ''
+
+        return input_received
+
+if __name__ == "__main__":
+    sh = ShythonConsole()
+    sys.exit(sh.interact())
