@@ -163,13 +163,13 @@ class BufferFileManager(object):
 class ShythonConsole(code.InteractiveConsole):
     def __init__(self, locals=None):
         self.orig_raw_input = self.raw_input
-        self.raw_input = self.hook_raw_input
+        self.raw_input = self._raw_input
 
         self.manager = BufferFileManager()
 
         code.InteractiveConsole.__init__(self, locals=locals)
 
-    def hook_raw_input(self, prompt):
+    def _raw_input(self, prompt):
         input_received = self.orig_raw_input(prompt=prompt)
 
         if input_received.startswith(':'):
