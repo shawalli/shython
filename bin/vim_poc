@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+
+import tempfile
+import subprocess
+import os
+
+try:
+    if os.path.exists('.shwp') is False:
+        os.mkdir('.shwp')
+
+    buf1 = tempfile.NamedTemporaryFile(suffix=".tmp", dir='.shwp')
+    buf1.write("This is buffer 1")
+    buf1.flush()
+
+    buf2 = tempfile.NamedTemporaryFile(suffix=".tmp", dir='.shwp')
+    buf2.write("This is buffer 2")
+    buf2.flush()
+
+    buf3 = tempfile.NamedTemporaryFile(suffix=".tmp", dir='.shwp')
+    buf3.write("This is buffer 3")
+    buf3.flush()
+
+    subprocess.call(['vim', '+set backupcopy=yes', buf1.name, buf2.name, buf3.name])
+
+    print('GOT BUFFERS BACK:')
+    print('1:')
+    buf1.seek(0)
+    print(buf1.read())
+    print('2:')
+    buf2.seek(0)
+    print(buf2.read())
+    print('3:')
+    buf3.seek(0)
+    print(buf3.read())
+
+finally:
+    if os.path.exists('.shwp') is True:
+        try:
+            # Intentionally try to remove the directory. If temporary files are
+            # still in the directory, this call will fail and the temporary files
+            # (and the parent directory) will be preserved. If no temporary files
+            # are present, we can safely remove it.
+            os.rmdir('.shwp')
+        except OSError:
+            # See above for the reason for just passing here
+            pass
