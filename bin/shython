@@ -7,6 +7,7 @@ import os
 import sys
 import tempfile
 from subprocess import call as system_call
+import traceback
 
 class BufferError(Exception): pass
 
@@ -144,12 +145,11 @@ class BufferFileManager(object):
         print('DBG: executing:' + ' '.join(command))
         system_call(command)
 
-    def execute_buffer(self, buffer_number):
+    def get_buffer_path(self, buffer_number):
         index = self._buffer_number_to_index(buffer_number)
         if self._validate_index(index) is False:
             return
-
-        self.buffers[index].execute()
+        return self.buffers[index].path
 
     def list_buffers(self):
         if len(self.buffers) == 0:
@@ -198,6 +198,16 @@ class ShythonConsole(code.InteractiveConsole):
 
         return input_received
 
+    @staticmethod
+    def _count_traceback():
+        tb = sys.exc_info()[2]
+
+        count = 0
+        while tb is not None:
+            count += 1
+            tb = tb.tb_next
+        return count
+
     def do_binit(self, args):
         parent_dir = None
         if len(args) > 0:
@@ -236,15 +246,38 @@ class ShythonConsole(code.InteractiveConsole):
         return ''
 
     def do_brun(self, args):
+        boundary = self._count_traceback()
         if len(args) == 0:
             print('Must provide at least one buffer to run')
         else:
             for buffer_number in args:
                 if isinstance(buffer_number, str) is True:
                     buffer_number = int(buffer_number)
-                self.manager.execute_buffer(buffer_number)
-                import pprint
-                pprint.pprint(globals())
+
+                buffer_path = self.manager.get_buffer_path(buffer_number)
+
+                try:
+                    # The goal of this functionality is that anything occuring in this
+                    # buffer should take place at the interpreter's global scope. We
+                    # override the traditional globals and locals because
+                    # InteractiveConsole forces our hand. Since it maintains its
+                    # own version of locals (that are actually globals), we must use
+                    # that instead to acheive global scope.
+                    execfile(buffer_path, self.locals, self.locals)
+                except:
+                    # There is a reason for this universal except!! Anything occurring
+                    # in the buffer should be considered non-fatal. Since the
+                    # interpreter must continue, it is more useful to print the
+                    # traceback (which includes the exception), rather than just
+                    # the exception itself.
+
+                    cur = self._count_traceback()
+
+                    # The lowest traceback will be from within Shython. Remove it.
+                    limit = cur - boundary - 1
+                    if limit < 0:
+                        limit = 0
+                    traceback.print_exc(limit=limit)
         return ''
 
     def do_bls(self):
