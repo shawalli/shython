@@ -138,7 +138,25 @@ class ShythonConsole(code.InteractiveConsole):
 
         self._init_manager()
 
-        code.InteractiveConsole.__init__(self, locals=locals)
+        code.InteractiveConsole.__init__(self,
+                                         locals=locals,
+                                         filename='<console>')
+
+        self._init_history()
+
+    def _init_history(self):
+        histfile = '.shython_history'
+        readline.parse_and_bind("tab: complete")
+        if hasattr(readline, "read_history_file"):
+            try:
+                readline.read_history_file(histfile)
+            except IOError:
+                pass
+            atexit.register(self._save_history, histfile)
+
+    def _save_history(self, histfile):
+        readline.set_history_length(1000)
+        readline.write_history_file(histfile)
 
     def _raw_input(self, prompt):
         input_received = self.orig_raw_input(prompt=prompt)
