@@ -39,7 +39,7 @@ class BufferFile(object):
     def close(self):
         if self.file is not None:
             self.file.close()
-            del(self.file)
+            self.file = None
 
     def destroy(self):
         self.close()
