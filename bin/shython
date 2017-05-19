@@ -5,6 +5,160 @@ import readline
 import atexit
 import os
 import sys
+import tempfile
+from subprocess import call as system_call
+
+class BufferError(Exception): pass
+
+class BufferFile(object):
+    """Currently a simply proxy class to a file object. However, I expect this
+    class become more complicated over time, so it makes sense to go ahead and
+    create the buffer as a class now to save re-factoring work later.
+    """
+    def __init__(self, dir=None, path=None):
+        self.file = None
+        self.path = ''
+        if path is not None:
+            if dir is not None:
+                self.path = dir
+            self.path = os.path.join(self.path, path)
+            try:
+                self.file = open(self.path, 'r+', 0)
+            except (IOError, OSError) as e:
+                # Catch exception, but don't treat it as fatal
+                print('Failed when trying to open named buffer: ' + str(e))
+                raise BufferError()
+        else:
+            (fd, self.path) = tempfile.mkstemp(suffix='.buffer', dir=dir)
+            self.file = os.fdopen(fd, 'r+', 0)
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.file is not None:
+            self.file.close()
+            del(self.file)
+
+    def destroy(self):
+        self.close()
+        os.unlink(self.path)
+
+    def execute(self):
+        # Not sure if this is required
+        self.file.seek(0)
+
+        # Kinda abusing this function here, but the goal is that anything
+        # occuring in this file should take place at the same scope as the
+        # interpreter (meaning, globally).
+        execfile(self.path, globals(), globals())
+
+class BufferFileManager(object):
+    """
+    General Note on Index vs. Buffer Number:
+    Vim uses 1-based indexing for buffers. Sane people use 0-based indexes for...
+    everything else. As a design principle, an index should remain an index for
+    everything under the hood, until direct interaction with Vim is required.
+    Additionally, what's presented to the user should be as a buffer number,
+    since we want the user to associate the buffer number in Shython and the buffer
+    number in Vim as the same thing.
+    """
+    def __init__(self, parent_dir='.shwp'):
+        self.buffers = list()
+        self.dir = parent_dir
+
+        if os.path.exists(self.dir) is False:
+            os.mkdir(self.dir)
+
+    def __del__(self):
+        for buffer in self.buffers:
+            buffer.close()
+
+        if os.path.exists(parent_dir) is True:
+            try:
+                # Intentionally try to remove the directory. If temporary files are
+                # still in the directory, this call will fail and the temporary files
+                # (and the parent directory) will be preserved. If no temporary files
+                # are present, we can safely remove it.
+                os.rmdir(parent_dir)
+            except OSError:
+                # See above for the reason for just passing here
+                pass
+
+    def _is_unique_buffer(self, buffer):
+        for other in self.buffers:
+            if other.path == buffer.path:
+                return False
+        return True
+
+    @staticmethod
+    def _buffer_number_to_index(buffer_number):
+        return buffer_number - 1
+
+    @staticmethod
+    def _index_to_buffer_number(index):
+        return index + 1
+
+    def _validate_index(self, index):
+        if index >= len(self.buffers):
+            print('Invalid buffer \'%d\'' % self._index_to_buffer_number(index))
+            return False
+        return True
+
+    def _validate_buffer_number(self, buffer_number):
+        return self._validate_index(self._buffer_number_to_index(buffer_number))
+
+    def remove_buffer(self, buffer_number):
+        index = self._buffer_number_to_index(buffer_number)
+        if self._validate_index(index) is False:
+            return
+
+        self.buffers[index].close()
+        self.buffers.pop(index)
+
+    def destroy_buffer(self, buffer_number):
+        index = self._buffer_number_to_index(buffer_number)
+        if self._validate_index(index) is False:
+            return
+
+        self.buffers[index].destroy()
+        self.buffers.pop(index)
+
+    def add_buffer(self, path=None):
+        try:
+            new_buffer = BufferFile(dir=self.dir, path=path)
+            if self._is_unique_buffer(new_buffer) is True:
+                self.buffers.append(new_buffer)
+        except BufferError:
+            pass
+
+    def edit_buffers(self, buffer_numbers=list()):
+        command = ['vim', '+set backupcopy=yes']
+
+        for buffer_number in buffer_numbers:
+            index = self._buffer_number_to_index(buffer_number)
+
+            if self._validate_index(index) is True:
+                command.append(self.buffers[index].path)
+
+        print('DBG: executing:' + ' '.join(command))
+        system_call(command)
+
+    def execute_buffer(self, buffer_number):
+        index = self._buffer_number_to_index(buffer_number)
+        if self._validate_index(index) is False:
+            return
+
+        self.buffers[index].execute()
+
+    def list_buffers(self):
+        if len(self.buffers) == 0:
+            print('Buffers: None')
+            return
+
+        print('Buffers:')
+        for idx, buffer in enumerate(self.buffers):
+            print('%i: %s' % (self._index_to_buffer_number(idx), buffer.path))
 
 class ShythonConsole(code.InteractiveConsole):
     def __init__(self, locals=None):
@@ -53,10 +207,60 @@ class ShythonConsole(code.InteractiveConsole):
                 return ''
             else:
                 print('Invalid Shython command: %s' % input_received)
-
-            return ''
-
         return input_received
+
+    def do_binit(self, args):
+        parent_dir = None
+        if len(args) > 0:
+            parent_dir = args[0]
+        self.manager = BufferFileManager(parent_dir=parent_dir)
+        return ''
+
+    def do_badd(self, args):
+        if len(args) > 0:
+            for path in args:
+                self.manager.add_buffer(path=path)
+        else:
+            self.manager.add_buffer()
+        return ''
+
+    def do_bdel(self, args):
+        if len(args) == 0:
+            print('Must provide at least one buffer to delete')
+        else:
+            for buffer_number in args:
+                if isinstance(buffer_number, str) is True:
+                    buffer_number = int(buffer_number)
+                self.manager.remove_buffer(buffer_number)
+        return ''
+
+    def do_bed(self, args):
+        if len(args) == 0:
+            print('Must provide at least one buffer to edit')
+        else:
+            new_args = list()
+            for arg in args:
+                if isinstance(arg, str) is True:
+                    arg = int(arg)
+                new_args.append(arg)
+            self.manager.edit_buffers(new_args)
+        return ''
+
+    def do_brun(self, args):
+        if len(args) == 0:
+            print('Must provide at least one buffer to run')
+        else:
+            for buffer_number in args:
+                if isinstance(buffer_number, str) is True:
+                    buffer_number = int(buffer_number)
+                self.manager.execute_buffer(buffer_number)
+                import pprint
+                pprint.pprint(globals())
+        return ''
+
+    def do_bls(self):
+        self.manager.list_buffers()
+        return ''
 
 if __name__ == "__main__":
     sh = ShythonConsole()
