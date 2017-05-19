@@ -165,12 +165,9 @@ class ShythonConsole(code.InteractiveConsole):
         self.orig_raw_input = self.raw_input
         self.raw_input = self.hook_raw_input
 
-        self.clear_snippet_buffers()
+        self.manager = BufferFileManager()
 
         code.InteractiveConsole.__init__(self, locals=locals)
-
-    def clear_snippet_buffers(self):
-        self.snippet_buffers = list()
 
     def hook_raw_input(self, prompt):
         input_received = self.orig_raw_input(prompt=prompt)
@@ -180,33 +177,25 @@ class ShythonConsole(code.InteractiveConsole):
 
             input_delimited = input_received.split()
 
-            if input_delimited[0] == 'badd':
-                self.snippet_buffers.append('')
-                return ''
-            elif input_delimited[0] == 'bdel':
-                index = int(input_delimited[1])
-                if index > (len(self.snippet_buffers) - 1):
-                    print('Invalid buffer index')
-                    return ''
+            command = input_delimited.pop(0)
+            args = input_delimited
 
-                self.snippet_buffers.pop(index)
-                return ''
-            elif input_delimited[0] == 'bclear':
-            	self.reset_snippet_buffers()
-                return ''
-            elif input_delimited[0] == 'bed':
-                print('got bed')
-            elif input_delimited[0] == 'brun':
-                print('got brun')
-            elif input_delimited[0] == 'bn':
-                print('got bn')
-            elif input_delimited[0] == 'bp':
-                print('got bp')
-            elif input_delimited[0] == 'bl':
-                print(' '.join([str(i) for i in range(len(self.snippet_buffers))]))
-                return ''
+            if command == 'binit':
+                return self.do_binit(args)
+            if command == 'badd':
+                return self.do_badd(args)
+            elif command == 'bdel':
+                return self.do_bdel(args)
+            elif command == 'bed':
+                return self.do_bed(args)
+            elif command == 'brun':
+                return self.do_brun(args)
+            elif command == 'bls':
+                return self.do_bls()
             else:
                 print('Invalid Shython command: %s' % input_received)
+                return ''
+
         return input_received
 
     def do_binit(self, args):
