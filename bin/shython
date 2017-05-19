@@ -45,15 +45,6 @@ class BufferFile(object):
         self.close()
         os.unlink(self.path)
 
-    def execute(self):
-        # Not sure if this is required
-        self.file.seek(0)
-
-        # Kinda abusing this function here, but the goal is that anything
-        # occuring in this file should take place at the same scope as the
-        # interpreter (meaning, globally).
-        execfile(self.path, globals(), globals())
-
 class BufferFileManager(object):
     """
     General Note on Index vs. Buffer Number:
@@ -142,7 +133,6 @@ class BufferFileManager(object):
             if self._validate_index(index) is True:
                 command.append(self.buffers[index].path)
 
-        print('DBG: executing:' + ' '.join(command))
         system_call(command)
 
     def get_buffer_path(self, buffer_number):
