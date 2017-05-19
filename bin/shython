@@ -16,13 +16,9 @@ class BufferFile(object):
     class become more complicated over time, so it makes sense to go ahead and
     create the buffer as a class now to save re-factoring work later.
     """
-    def __init__(self, parent_dir=None, path=None):
-        self.file = None
-        self.path = ''
+    def __init__(self, path=None):
         if path is not None:
-            if parent_dir is not None:
-                self.path = parent_dir
-            self.path = os.path.join(self.path, path)
+            self.path = os.path.realpath(path)
             try:
                 self.file = open(self.path, 'r+', 0)
             except (IOError, OSError) as e:
@@ -30,7 +26,7 @@ class BufferFile(object):
                 print('Failed when trying to open named buffer: ' + str(e))
                 raise BufferError()
         else:
-            (fd, self.path) = tempfile.mkstemp(suffix='.buffer', dir=parent_dir)
+            (fd, self.path) = tempfile.mkstemp(prefix='.', suffix='.buffer', dir='.')
             self.file = os.fdopen(fd, 'r+', 0)
 
     def __del__(self):
@@ -55,27 +51,12 @@ class BufferFileManager(object):
     since we want the user to associate the buffer number in Shython and the buffer
     number in Vim as the same thing.
     """
-    def __init__(self, parent_dir='.shwp'):
+    def __init__(self):
         self.buffers = list()
-        self.parent_dir = parent_dir
-
-        if os.path.exists(self.parent_dir) is False:
-            os.mkdir(self.parent_dir)
 
     def __del__(self):
         for buffer in self.buffers:
             buffer.close()
-
-        if os.path.exists(self.parent_dir) is True:
-            try:
-                # Intentionally try to remove the directory. If temporary files are
-                # still in the directory, this call will fail and the temporary files
-                # (and the parent directory) will be preserved. If no temporary files
-                # are present, we can safely remove it.
-                os.rmdir(self.parent_dir)
-            except OSError:
-                # See above for the reason for just passing here
-                pass
 
     def _is_unique_buffer(self, buffer):
         for other in self.buffers:
@@ -118,7 +99,7 @@ class BufferFileManager(object):
 
     def add_buffer(self, path=None):
         try:
-            new_buffer = BufferFile(parent_dir=self.parent_dir, path=path)
+            new_buffer = BufferFile(path=path)
             if self._is_unique_buffer(new_buffer) is True:
                 self.buffers.append(new_buffer)
         except BufferError:
@@ -198,17 +179,11 @@ class ShythonConsole(code.InteractiveConsole):
             tb = tb.tb_next
         return count
 
-    def _init_manager(self, parent_dir=None):
-        if parent_dir is None:
+    def _init_manager(self):
             self.manager = BufferFileManager()
-        else:
-            self.manager = BufferFileManager(parent_dir=parent_dir)
 
     def do_binit(self, args):
-        parent_dir = None
-        if len(args) > 0:
-            parent_dir = args[0]
-        self._init_manager(parent_dir=parent_dir)
+        self._init_manager()
         return ''
 
     def do_badd(self, args):
