@@ -96,7 +96,7 @@ class BufferFileManager(object):
 
     def _validate_index(self, index):
         if index >= len(self.buffers):
-            print('Invalid buffer \'%d\'' % self._index_to_buffer_number(index))
+            print('Invalid buffer \'{}\''.format(self._index_to_buffer_number(index)))
             return False
         return True
 
@@ -151,7 +151,7 @@ class BufferFileManager(object):
 
         print('Buffers:')
         for idx, buffer in enumerate(self.buffers):
-            print('%i: %s' % (self._index_to_buffer_number(idx), buffer.path))
+            print('{0}: {1}'.format(self._index_to_buffer_number(idx), buffer.path))
 
 class ShythonConsole(code.InteractiveConsole):
     help_descriptions = [
@@ -232,7 +232,7 @@ class ShythonConsole(code.InteractiveConsole):
             elif command == 'brun':
                 return self.do_brun(args)
             else:
-                print('Invalid Shython command: %s' % input_received)
+                print('Invalid Shython command: {}'.format(input_received))
                 return ''
 
         return input_received
