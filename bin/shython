@@ -9,8 +9,29 @@ import sys
 import tempfile
 from subprocess import call as system_call
 import traceback
+from collections import Iterable
+import textwrap
 
 class BufferError(Exception): pass
+
+SCREEN_WIDTH = None
+def get_screen_width():
+    global SCREEN_WIDTH
+
+    if SCREEN_WIDTH is not None:
+        return SCREEN_WIDTH
+
+    if sys.version_info > (3,3):
+        import shutil
+        w,h = shutil.get_terminal_size()
+    else:
+        import fcntl, termios, struct
+        h, w, hp, wp = struct.unpack('HHHH',
+            fcntl.ioctl(0, termios.TIOCGWINSZ,
+            struct.pack('HHHH', 0, 0, 0, 0)))
+
+    SCREEN_WIDTH = w
+    return SCREEN_WIDTH
 
 class BufferFile(object):
     """Currently a simply proxy class to a file object. However, I expect this
@@ -133,6 +154,32 @@ class BufferFileManager(object):
             print('%i: %s' % (self._index_to_buffer_number(idx), buffer.path))
 
 class ShythonConsole(code.InteractiveConsole):
+    help_descriptions = [
+        ('help',   '[COMMAND]',
+                   'Print this message and exit.'),
+        ('badd',   '[PATH ...]',
+                   ('Add a buffer. If a path is provided, open a buffer backed by '
+                    'that file instead of a new file.')),
+        ('bdel',   '<BUFFER_NUM> [...]',
+                   ('Delete a buffer as referenced by its buffer number. One or more '
+                    'buffer numbers must be provided.')),
+        ('bed',    '<BUFFER_NUM> [...]',
+                   ('Edit a buffer as referenced by its buffer number. One or more '
+                    'buffer numbers must be provided.')),
+        ('binit',  '[PATH]',
+                   ('Re-initialize the buffer list. If a path is provided, it is used '
+                    'as the root directory instead of the current directory.')),
+        ('bls',    '',
+                   'List all buffers.'),
+        ('brun',   '<BUFFER_NUM> [...]',
+                   ('Execute a buffer as referenced by its buffer number. One or more '
+                    'buffer numbers must be provided.After executing the buffer, any '
+                    'classes, method, or variables created by the buffer will be '
+                    'available to the interpreter. NOTE: Buffers execute in the interpreter '
+                    'global scope. A reference will be clobbered if an object of the '
+                    'same name is changed in the buffer.')),
+    ]
+
     def __init__(self, locals=None):
         self.orig_raw_input = self.raw_input
         self.raw_input = self._raw_input
@@ -170,23 +217,69 @@ class ShythonConsole(code.InteractiveConsole):
             command = input_delimited.pop(0)
             args = input_delimited
 
-            if command == 'binit':
-                return self.do_binit(args)
-            if command == 'badd':
+            if command == 'help':
+                return self.do_help(args)
+            elif command == 'badd':
                 return self.do_badd(args)
             elif command == 'bdel':
                 return self.do_bdel(args)
             elif command == 'bed':
                 return self.do_bed(args)
-            elif command == 'brun':
-                return self.do_brun(args)
+            elif command == 'binit':
+                return self.do_binit(args)
             elif command == 'bls':
                 return self.do_bls()
+            elif command == 'brun':
+                return self.do_brun(args)
             else:
                 print('Invalid Shython command: %s' % input_received)
                 return ''
 
         return input_received
+
+    def _next_help_command(self):
+        """Gets next command from help-description list."""
+        for (command, arg_desc, command_desc) in self.help_descriptions:
+            yield command
+        raise StopIteration
+
+    def _next_help_description(self):
+        """Gets next command description from help-description list."""
+        for desc in self._help_descriptions_iterator():
+            yield desc
+        raise StopIteration
+
+    def _get_help_description(self, command):
+        """Gets specified command description from help-description list."""
+        for (cur_command, arg_desc, command_desc) in self.help_descriptions:
+            if command == cur_command:
+                return (arg_desc, command_desc)
+        return None
+
+    def _format_help_description(self, command):
+        """Formats command description for output."""
+        SUBSEQUENT_INDENT = 20
+        COMMAND_LEN_CUTOFF = 18
+
+        desc = self._get_help_description(command)
+        if desc is None:
+            return None
+        arg_desc, command_desc = desc
+
+        shortcommand_desc_fmtr = textwrap.TextWrapper(subsequent_indent=' '*SUBSEQUENT_INDENT,
+                                                 width=get_screen_width())
+        longcommand_desc_fmtr = textwrap.TextWrapper(initial_indent=' '*SUBSEQUENT_INDENT,
+                                                 subsequent_indent=' '*SUBSEQUENT_INDENT,
+                                                 width=get_screen_width())
+
+        formatted_command_line = '  {0} {1}'.format(command, arg_desc)
+        if len(formatted_command_line) < COMMAND_LEN_CUTOFF:
+            formatted_command_line = '{0:{1}}{2}'.format(formatted_command_line, SUBSEQUENT_INDENT, command_desc)
+            formatted_desc = [shortcommand_desc_fmtr.fill(formatted_command_line),]
+        else:
+            formatted_desc_line = longcommand_desc_fmtr.fill(command_desc)
+            formatted_desc = [formatted_command_line, formatted_desc_line]
+        return formatted_desc
 
     @staticmethod
     def _count_traceback():
@@ -200,6 +293,21 @@ class ShythonConsole(code.InteractiveConsole):
 
     def _init_manager(self):
             self.manager = BufferFileManager()
+
+    def do_help(self, args):
+        if len(args) > 0:
+            command = args[0]
+            formatted_desc = self._format_help_description(command)
+            if formatted_desc is None:
+                print('No help available for command \'{}\''.format(command))
+                return ''
+        else:
+            formatted_desc = ['  {0:18}{1}'.format('COMMAND', 'DESCRIPTION')]
+            for command in self._next_help_command():
+                formatted_desc.extend(self._format_help_description(command))
+        formatted_desc = '\n'.join(formatted_desc)
+        print(formatted_desc)
+        return ''
 
     def do_binit(self, args):
         self._init_manager()
