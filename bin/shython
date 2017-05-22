@@ -156,7 +156,8 @@ class BufferFileManager(object):
 class ShythonConsole(code.InteractiveConsole):
     help_descriptions = [
         ('help',   '[COMMAND]',
-                   'Print this message and exit.'),
+                   ('Print this message and exit. If a command is provided, that command\'s '
+                   'help message is printed instead.')),
         ('badd',   '[PATH ...]',
                    ('Add a buffer. If a path is provided, open a buffer backed by '
                     'that file instead of a new file.')),
