@@ -193,6 +193,7 @@ class ShythonConsole(code.InteractiveConsole):
         self._init_history()
 
     def _init_history(self):
+        """Initializes history file."""
         histfile = '.shython_history'
         readline.parse_and_bind("tab: complete")
         if hasattr(readline, "read_history_file"):
@@ -203,10 +204,12 @@ class ShythonConsole(code.InteractiveConsole):
             atexit.register(self._save_history, histfile)
 
     def _save_history(self, histfile):
+        """Saves history to history file."""
         readline.set_history_length(1000)
         readline.write_history_file(histfile)
 
     def _raw_input(self, prompt):
+        """Overrides default raw_input method to inject Shython functions."""
         input_received = self.orig_raw_input(prompt=prompt)
 
         if input_received.startswith(':'):
@@ -283,6 +286,7 @@ class ShythonConsole(code.InteractiveConsole):
 
     @staticmethod
     def _count_traceback():
+        """Assists with traceback if a buffer errors when executing."""
         tb = sys.exc_info()[2]
 
         count = 0
@@ -292,7 +296,8 @@ class ShythonConsole(code.InteractiveConsole):
         return count
 
     def _init_manager(self):
-            self.manager = BufferFileManager()
+        """Initializes the buffer-file manager."""
+        self.manager = BufferFileManager()
 
     def do_help(self, args):
         if len(args) > 0:
