@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import code
 import readline
 import atexit
-import os
-import sys
-import tempfile
-from subprocess import call as system_call
-import traceback
+import subprocess
 from collections import Iterable
+import tempfile
+import traceback
 import textwrap
 
 class BufferError(Exception): pass
@@ -136,7 +135,7 @@ class BufferFileManager(object):
             if self._validate_index(index) is True:
                 command.append(self.buffers[index].path)
 
-        system_call(command)
+        subprocess.call(command)
 
     def get_buffer_path(self, buffer_number):
         index = self._buffer_number_to_index(buffer_number)
