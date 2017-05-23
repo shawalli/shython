@@ -398,5 +398,10 @@ class ShythonConsole(code.InteractiveConsole):
         return ''
 
 if __name__ == "__main__":
-    sh = ShythonConsole()
-    sys.exit(sh.interact())
+    if len(sys.argv) > 1:
+        new_argv = sys.argv
+        sys.argv[0] = sys.executable
+        os.execv(sys.executable, new_argv)
+    else:
+        sh = ShythonConsole()
+        sys.exit(sh.interact())
