@@ -41,14 +41,20 @@ class BufferFile(object):
         if path is not None:
             self.path = os.path.realpath(path)
             try:
-                self.file = open(self.path, 'r+', 0)
+                if sys.version_info < (3,0):
+                    self.file = open(self.path, 'r+', 0)
+                else:
+                    self.file = open(self.path, 'r+')
             except (IOError, OSError) as e:
                 # Catch exception, but don't treat it as fatal
                 print('Failed when trying to open named buffer: ' + str(e))
                 raise BufferError()
         else:
             (fd, self.path) = tempfile.mkstemp(prefix='.', suffix='.buffer', dir='.')
-            self.file = os.fdopen(fd, 'r+', 0)
+            if sys.version_info < (3,0):
+                self.file = os.fdopen(fd, 'r+', 0)
+            else:
+                self.file = os.fdopen(fd, 'r+')
 
     def __del__(self):
         self.close()
@@ -366,7 +372,11 @@ class ShythonConsole(code.InteractiveConsole):
                     # InteractiveConsole forces our hand. Since it maintains its
                     # own version of locals (that are actually globals), we must use
                     # that instead to acheive global scope.
-                    execfile(buffer_path, self.locals, self.locals)
+                    if sys.version_info < (3,0):
+                        execfile(buffer_path, self.locals, self.locals)
+                    else:
+                        with open(buffer_path, 'r') as buf:
+                            exec(buf.read(), self.locals, self.locals)
                 except:
                     # There is a reason for this universal except!! Anything occurring
                     # in the buffer should be considered non-fatal. Since the
