@@ -22,6 +22,15 @@ Shython commands are detected by the interpreter when an interpreter line starts
 | bls     |                           | List all buffers. |
 | brun    | &lt;BUFFER_NUM&gt; [...]  | Execute a buffer as referenced by its buffer number. One or more buffer numbers must be provided.After executing the buffer, any classes, method, or variables created by the buffer will be available to the interpreter. NOTE: Buffers execute in the interpreter global scope. A reference will be clobbered if an object of the same name is changed in the buffer. |
 
+### Buffer Demo
+The demo below shows a common workflow example in Shython.
+1. Shython is invoked.
+2. A buffer is added. A listing of the buffer is shown for demonstration.
+3. The buffer is edited. A class is created, with free usage of empty lines.
+4. The buffer is executed.
+5. The class and variable that were created when the buffer ran are now available to the interpreter.
+
+![screencast](screencast.gif)
 
 ## History
 Commands are saved in a history file (.shython_history) in the directory from which Shython was run. As a result, an interpreter session can remember code executed in previous sessions.
