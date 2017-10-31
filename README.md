@@ -17,7 +17,7 @@ Shython commands are detected by the interpreter when an interpreter line starts
 | Command | Arguments                 | Description |
 |:-------:|:------------------------- |:----------- |
 | help    | [COMMAND]                 | Print this message and exit. If a command is provided, that command's help message is printed instead. |
-| badd    | [PATH ...]                | Add a buffer. If a path is provided, open a buffer backed by that file instead of a new file. |
+| badd    | [PATH ...]                | Add a buffer. If a path is provided and that path describes an existing file, open a buffer backed by that file. If a path is provided and no file matches that path, open a buffer backed by a new file at that location. If no path is provided, open a buffer backed by a new file in the current working directory. |
 | bdel    | &lt;BUFFER_NUM&gt; [...]  | Delete a buffer as referenced by its buffer number. One or more buffer numbers must be provided. |
 | bed     | &lt;BUFFER_NUM&gt; [...]  | Edit a buffer as referenced by its buffer number. One or more buffer numbers must be provided. |
 | binit   | [PATH]                    | Re-initialize the buffer list. If a path is provided, it is used as the root directory instead of the current directory. |
