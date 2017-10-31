@@ -11,6 +11,9 @@ import tempfile
 import traceback
 import textwrap
 
+# Add the current directory to PATH
+sys.path.append(os.getcwd())
+
 class BufferError(Exception): pass
 
 SCREEN_WIDTH = None
