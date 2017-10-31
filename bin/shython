@@ -45,9 +45,9 @@ class BufferFile(object):
             self.path = os.path.realpath(path)
             try:
                 if sys.version_info < (3,0):
-                    self.file = open(self.path, 'r+', 0)
+                    self.file = open(self.path, 'a+', 0)
                 else:
-                    self.file = open(self.path, 'r+')
+                    self.file = open(self.path, 'a+')
             except (IOError, OSError) as e:
                 # Catch exception, but don't treat it as fatal
                 print('Failed when trying to open named buffer: ' + str(e))
