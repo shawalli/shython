@@ -1,5 +1,5 @@
 # Shython
-Shython extends the default Python intereter (available via the 'code' module) to add some extra features, as described below.
+Shython extends the default Python interpreter (available via the 'code' module) to add some extra features, as described below.
 
 ## Buffers
 An annoyance I've always had with the interpreter is building out classes and methods. They are generally entered one line at a time. Once the class/method is complete, the
@@ -9,7 +9,7 @@ Shython seeks to remedy this problem using a concept known hereafter as buffers.
 
 Buffers are backed by files, so that they persist between sessions. As such, it is possible to handle buffers in a variety of ways. For instance, a buffer can be edited by an external editor and re-executed during a session. A buffer can be version controlled. A buffer from a previous session can be re-opened by Shython by passing the buffer's path to the 'badd' command.
 
-Anything run in a buffer is scoped globally, meaning that classes, methods, and variables created in the buffer will persist in the interpreter after the buffer can been executed. For example, if you create a class 'Foo' in a buffer and run it, you can create an instance of foo from the interpreter command line.
+Anything run in a buffer is scoped globally, meaning that classes, methods, and variables created in the buffer will persist in the interpreter after the buffer has been executed. For example, if you create a class 'Foo' in a buffer and run it, you can create an instance of foo from the interpreter command line.
 
 ### Buffer Commands
 Shython commands are detected by the interpreter when an interpreter line starts with a colon. A table describing the current Shython commands is included below.
